@@ -259,7 +259,7 @@ docker compose logs -f               # 看日志
 | 现象 | 原因 / 处理 |
 | --- | --- |
 | 跑了 `--dry-run`，草稿箱里没有内容 | **正常**。`--dry-run` 刻意不调用任何微信接口，只生成本地成品用于验内容/排版。正式命令去掉 `--dry-run` |
-| 正式命令输出「未存入草稿箱」 | `.env` 的 `WX_APPID` / `WX_APPSECRET` 未填，或 `config.json` 的 `draft_enabled` 为 false。填完重启容器，用 `check` 确认 |
+| 正式命令输出「未存入草稿箱」 | `.env` 的 `WX_APPID` / `WX_APPSECRET` 未填，或 `config.json` 的 `draft_enabled` 为 false。手动 `run` 填完直接生效；常驻 daemon 需 `docker compose up -d --force-recreate`（`restart` 不会重读 `env_file`），再用 `check` 确认 |
 | 填了凭据仍提示「今天已成功跑过一次」 | 幂等保护。加 `--force` 重跑；升级到最新版后 `dry-run` 已不再占用当天的正式名额 |
 | `40013 invalid appid` | `WX_APPID` 填错 |
 | `40001` / `40125` | AppSecret 错误或已重置，重新生成并更新 `.env` |

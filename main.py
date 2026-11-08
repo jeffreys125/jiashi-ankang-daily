@@ -172,7 +172,8 @@ def cmd_run(cfg, args):
         print("    （或等常驻 daemon 到点自动执行）")
     elif s.get("status") == "local_only":
         print("\n  ⚠ 未存入草稿箱：公众号凭据未配置，或 draft_enabled 被关闭。")
-        print("    请在 .env 填 WX_APPID / WX_APPSECRET，改完重启容器生效。")
+        print("    请在 .env 填 WX_APPID / WX_APPSECRET。手动 run 直接生效；")
+        print("    常驻 daemon 需执行：docker compose up -d --force-recreate")
         print("    自检：docker compose run --rm app python main.py check")
     else:
         print("\n  下一步：到公众号后台「草稿箱」找到这篇，点「发表」。")
