@@ -164,7 +164,19 @@ def cmd_run(cfg, args):
     for label, key in [("Markdown 原稿", "md_path"), ("微信正文 HTML", "html_path"),
                        ("本地排版预览", "preview_path"), ("封面图", "cover_path")]:
         print(f"    {label:<16} {s.get(key, '')}")
-    print(f"\n  下一步：打开上面的「本地排版预览」看效果；正式模式请到公众号后台点「发表」。\n")
+    if dry:
+        print("\n  ⚠ 本次是【本地试跑 --dry-run】，刻意不调用微信接口：")
+        print("    公众号草稿箱不会有任何内容，这是正常的。")
+        print("    要正式出稿并存入草稿箱，请执行：")
+        print("      docker compose run --rm app python main.py run")
+        print("    （或等常驻 daemon 到点自动执行）")
+    elif s.get("status") == "local_only":
+        print("\n  ⚠ 未存入草稿箱：公众号凭据未配置，或 draft_enabled 被关闭。")
+        print("    请在 .env 填 WX_APPID / WX_APPSECRET，改完重启容器生效。")
+        print("    自检：docker compose run --rm app python main.py check")
+    else:
+        print("\n  下一步：到公众号后台「草稿箱」找到这篇，点「发表」。")
+    print(f"  打开上面的「本地排版预览」可先看排版效果。\n")
     return 0
 
 

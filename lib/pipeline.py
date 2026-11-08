@@ -258,7 +258,10 @@ def run(
         if not dry_run and not no_notify and status in ("draft_ok", "published"):
             summary["notify"] = notify_draft(cfg, summary)
 
-        store.mark_run("full", "success", f"{status} | {article['title']}", time.time() - t0)
+        # dry-run 不能记成 "full" 成功，否则当天正式运行会被幂等保护误判为
+        # 「今天已跑过」而直接跳过，导致草稿箱一直没有内容。
+        store.mark_run("dry" if dry_run else "full", "success",
+                       f"{status} | {article['title']}", time.time() - t0)
         log("pipeline").info("完成：%s（耗时 %.1fs）", draft_note, time.time() - t0)
         log("pipeline").info("成品目录：%s", outdir)
         return summary

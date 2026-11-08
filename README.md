@@ -258,6 +258,9 @@ docker compose logs -f               # 看日志
 
 | 现象 | 原因 / 处理 |
 | --- | --- |
+| 跑了 `--dry-run`，草稿箱里没有内容 | **正常**。`--dry-run` 刻意不调用任何微信接口，只生成本地成品用于验内容/排版。正式命令去掉 `--dry-run` |
+| 正式命令输出「未存入草稿箱」 | `.env` 的 `WX_APPID` / `WX_APPSECRET` 未填，或 `config.json` 的 `draft_enabled` 为 false。填完重启容器，用 `check` 确认 |
+| 填了凭据仍提示「今天已成功跑过一次」 | 幂等保护。加 `--force` 重跑；升级到最新版后 `dry-run` 已不再占用当天的正式名额 |
 | `40013 invalid appid` | `WX_APPID` 填错 |
 | `40001` / `40125` | AppSecret 错误或已重置，重新生成并更新 `.env` |
 | `40164` | 服务器公网 IP 未加入 API IP 白名单，`curl ifconfig.me` 查后添加 |
@@ -285,6 +288,8 @@ docker compose logs -f               # 看日志
 ---
 
 ## 十二、常见问题
+
+**跑了 `run --dry-run`，为什么公众号草稿箱没有内容？** 因为 `--dry-run` 是本地试跑，设计上完全不调用微信接口，只在 `output/` 下生成成品文件，用来先验内容和排版。要真正存入草稿箱，运行不带 `--dry-run` 的命令：`docker compose run --rm app python main.py run`，并先确认 `.env` 已填 `WX_APPID` / `WX_APPSECRET`、`python main.py check` 显示 `wechat_草稿箱 OK`。常驻的 `daemon` 到点也会自动执行正式流程。
 
 **能完全无人值守吗？** 个人订阅号不行，微信不开放发布接口；认证服务号/订阅号可以（开 `auto_publish`）。
 
