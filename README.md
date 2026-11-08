@@ -298,6 +298,25 @@ docker compose logs -f               # 看日志
 
 ---
 
+## 十三、上传到 GitHub
+
+仓库里**不含任何密钥**：`.env`（真实凭据）、`data/`、`output/`、`__pycache__/` 都在 `.gitignore` 里，只提交不含密钥的 `.env.example` 模板。
+
+```bash
+bash deploy/push_to_github.sh                          # 默认 jeffreys125/jiashi-ankang-daily
+bash deploy/push_to_github.sh <仓库名> <用户名>        # 自定义
+```
+
+脚本做 `git init → add → commit → remote → push`，凭据走本机 git credential helper，命令里不写 token；它还会检查 `.env` 是否被误暂存，发现就中止。
+
+> **若报 `403 Resource not accessible by integration`**：说明当前 GitHub App 授权不允许「新建仓库」（只授权了推送到已有仓库）。请先在网页手动建一个**完全空**的仓库：
+> 1. 打开 [github.com/new](https://github.com/new)
+> 2. Repository name 填 `jiashi-ankang-daily`，选 **Private**
+> 3. **不要**勾选 Add a README / .gitignore / license
+> 4. 再执行上面的脚本即可（或把仓库名告诉我，我来推）
+
+---
+
 ## 附：目录结构
 
 ```
