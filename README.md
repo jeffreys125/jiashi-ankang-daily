@@ -167,10 +167,27 @@ output/2026-11-08/
 ├── 文章标题.md              # Markdown 原稿（含参考线索、配图建议、合规记录）
 ├── 文章标题.html            # 可直接提交给微信的正文 HTML（全内联样式）
 ├── 文章标题.preview.html    # 本地手机宽度排版预览
-└── cover.png                # 900×383 封面图
+├── cover.png                # 900×383 封面图
+├── illust-1.png             # 正文插图 1（900×500）
+└── illust-2.png             # 正文插图 2
 ```
 
 `.md` 和 `.html` 都留在本地，即使微信接口临时故障，文章也不会丢，可手动复制粘贴到后台。
+
+---
+
+## 七·二、正文配图
+
+每篇默认在正文里插 **2 张图**（`config.json` → `illustrations.count`，可设 0~4）。微信正文的 `<img>` 必须是微信域名地址，程序会用 `media/uploadimg` 逐张上传换取 URL 再写入草稿；单张失败只跳过该张，不影响建草稿。
+
+图片来源两条通道，按优先级：
+
+| 通道 | 做法 | 说明 |
+| --- | --- | --- |
+| ① 你自己的图（优先） | 把 jpg / png / webp 放进 `input/images/`，按文件名排序取前 N 张 | 自动居中裁切成 900×500 并压到 1MB 以下；该目录已被 `.gitignore` 排除，私人照片不会进仓库 |
+| ② 本地绘制提示卡（兜底） | 图片不够时程序用 Pillow 画暖色「要点提示卡」 | 卡片文字取自本文的小标题 / 金句，与内容相关；大字、留白多，适合中老年读者；零版权风险、零额外费用 |
+
+刻意**不抓网络图片、不调用 AI 生图**：公众号搬运配图有侵权风险，生图还需额外 API Key 和费用。想要真实照片，最稳妥的做法是自己拍几张家常场景放进 `input/images/`。关掉配图：`illustrations.enabled` 设 `false`，或 `count` 设 `0`。
 
 ---
 
@@ -186,6 +203,10 @@ bash deploy/install.sh --cron
 **不想装 cron**：`python main.py daemon` 常驻，按 `config.json` 里 `schedule.cron` 的时间每天执行；用 `systemd` 或 `nohup` 托管即可。
 
 **本地电脑**：用「计划任务 / launchd / cron」调用同一条 `main.py run` 命令即可，代码跨平台。
+
+**默认跑的时间**：`config.json` 的 `schedule.cron` 默认是 `30 6 * * *`，即**每天北京时间 06:30**（容器已设 `TZ=Asia/Shanghai`）。`daemon` 启动后**不会立刻跑一次**，而是等到下一个 06:30；想马上出一篇用 `python main.py run --force`。改时间改 `schedule.cron`（只支持「分 时 \* \* \*」格式），改完重启容器即可。
+
+> **容器在跑 ≠ 一定会进草稿箱。** 只有 `.env` 里 `WX_APPID` / `WX_APPSECRET` 正确、且服务器公网 IP 加进了公众号 API 白名单，自动流程才会把文章存进草稿箱；否则它会照常采集出稿，但只落到 `output/`。用 `python main.py check` 看到 `wechat_草稿箱 OK` 才算就绪。另外当天已成功跑过一次会被幂等保护跳过，属正常。
 
 日志在 `data/logs/run-YYYYMM.log`，运行记录在 SQLite（`python main.py stats` 可查）。
 
@@ -216,7 +237,8 @@ docker compose logs -f               # 看日志
 | `docker compose run --rm app python main.py check --probe` | 自检 + 实测采集源 |
 | `docker compose run --rm app python main.py run --force` | 立即手动出一篇（忽略当天幂等）|
 | `docker compose run --rm app python main.py stats` | 统计与运行记录 |
-| `docker compose restart` | 改完 `.env` / `config.json` 后重启生效 |
+| `docker compose restart` | 只改了 `config.json` 时重启即可 |
+| `docker compose up -d --force-recreate` | 改完 `.env` 后必须强制重建（`restart` 不会重读 `env_file`） |
 | `docker compose down` | 停止（数据不丢）|
 
 ### 数据与凭据映射
@@ -226,7 +248,7 @@ docker compose logs -f               # 看日志
 | `.env` | 环境变量注入 | 凭据；**不进镜像、不进 GitHub** |
 | `./data` | `/app/data` | SQLite、access_token 缓存、日志，持久化 |
 | `./output` | `/app/output` | 每日成品（md / html / 封面），持久化 |
-| `./input` | `/app/input` | 手动素材 |
+| `./input` | `/app/input` | 手动素材 + 正文配图（`input/images/`） |
 | `./config.json` | `/app/config.json:ro` | 改采集源 / 关键词 / 定时时间不用重建镜像，重启即可 |
 
 容器以非 root 用户运行，入口脚本会自动修正挂载目录属主，宿主机文件不会被写成 root 所有。
@@ -261,6 +283,8 @@ docker compose logs -f               # 看日志
 | 跑了 `--dry-run`，草稿箱里没有内容 | **正常**。`--dry-run` 刻意不调用任何微信接口，只生成本地成品用于验内容/排版。正式命令去掉 `--dry-run` |
 | 正式命令输出「未存入草稿箱」 | `.env` 的 `WX_APPID` / `WX_APPSECRET` 未填，或 `config.json` 的 `draft_enabled` 为 false。手动 `run` 填完直接生效；常驻 daemon 需 `docker compose up -d --force-recreate`（`restart` 不会重读 `env_file`），再用 `check` 确认 |
 | 填了凭据仍提示「今天已成功跑过一次」 | 幂等保护。加 `--force` 重跑；升级到最新版后 `dry-run` 已不再占用当天的正式名额 |
+| 正文里没有配图 | 检查 `illustrations.enabled` / `count`；或日志里「插图上传失败」——单张失败只跳过该张，草稿仍会创建 |
+| 想用自己的配图 | 放进 `input/images/` 即优先使用（不进 git 仓库） |
 | `40013 invalid appid` | `WX_APPID` 填错 |
 | `40001` / `40125` | AppSecret 错误或已重置，重新生成并更新 `.env` |
 | `40164` | 服务器公网 IP 未加入 API IP 白名单，`curl ifconfig.me` 查后添加 |
@@ -290,6 +314,10 @@ docker compose logs -f               # 看日志
 ## 十二、常见问题
 
 **跑了 `run --dry-run`，为什么公众号草稿箱没有内容？** 因为 `--dry-run` 是本地试跑，设计上完全不调用微信接口，只在 `output/` 下生成成品文件，用来先验内容和排版。要真正存入草稿箱，运行不带 `--dry-run` 的命令：`docker compose run --rm app python main.py run`，并先确认 `.env` 已填 `WX_APPID` / `WX_APPSECRET`、`python main.py check` 显示 `wechat_草稿箱 OK`。常驻的 `daemon` 到点也会自动执行正式流程。
+
+**容器在跑，它什么时候自动采集、会自动进草稿箱吗？** 默认**每天北京时间 06:30**（`config.json` 的 `schedule.cron`），`daemon` 启动后等到下一个 06:30 才执行，不会立刻跑。它执行的是**正式流程**（不是 dry-run），所以凭据配好、IP 在白名单里就会自动存进草稿箱；凭据没配则只出本地成品。想改时间改 `schedule.cron`，想立刻出一篇用 `main.py run --force`。
+
+**能换成我自己拍的照片吗？** 可以，直接把图片放进 `input/images/` 就会优先使用，程序自动裁切压缩并上传成微信图片；不放则默认用本地绘制的要点提示卡。见「七·二、正文配图」。
 
 **能完全无人值守吗？** 个人订阅号不行，微信不开放发布接口；认证服务号/订阅号可以（开 `auto_publish`）。
 
@@ -336,6 +364,7 @@ jiashi-ankang-daily/
 │   ├── compliance.py        # 合规检查与声明
 │   ├── formatter.py         # 公众号内联样式 HTML
 │   ├── cover.py             # Pillow 封面绘制
+│   ├── illustrator.py       # 正文插图（自有图 + 本地绘制要点卡）
 │   ├── wechat.py            # 微信官方 API（token/上传/草稿/发布）
 │   ├── notify.py            # 手机推送提醒
 │   ├── store.py             # SQLite 存储 + 去重 + 幂等

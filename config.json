@@ -11,6 +11,13 @@
     "timezone": "Asia/Shanghai",
     "comment": "每天 06:30 采集写稿建草稿；你在公众号后台点一下「发表」即可"
   },
+  "illustrations": {
+    "enabled": true,
+    "count": 2,
+    "user_dir": "input/images",
+    "caption": true,
+    "comment": "正文插图：把自有图片放进 input/images/ 即优先使用；不足的由程序本地绘制要点提示卡补齐。count 可设 0~4，设 0 关闭"
+  },
   "topics": {
     "avoid_repeat_days": 30,
     "weights": {

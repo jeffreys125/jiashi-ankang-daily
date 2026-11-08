@@ -38,6 +38,9 @@ def main() -> None:
         d.mkdir(parents=True, exist_ok=True)
         cover_name = f"cover-{slug}.png"
         shutil.copy(s["cover_path"], d / cover_name)
+        # 正文插图用相对路径引用，保持同名复制到示例目录即可显示
+        for p in sorted(Path(s["preview_path"]).parent.glob("illust-*")):
+            shutil.copy(p, d / p.name)
         html = (Path(s["preview_path"]).read_text(encoding="utf-8")
                 .replace('src="cover.png"', f'src="{cover_name}"'))
         (d / "preview.html").write_text(html, encoding="utf-8")

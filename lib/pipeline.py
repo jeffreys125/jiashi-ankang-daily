@@ -12,7 +12,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from . import compliance, cover, formatter, store, topics
+from . import compliance, cover, formatter, illustrator, store, topics
 from .collector import Collector
 from .generator import Generator
 from .notify import notify_draft
@@ -155,7 +155,12 @@ def run(
             cover_path, article["title"], block["column"],
             cfg["account"].get("signature", ""), cfg,
         )
-        md_text = formatter.build_markdown(article, article["body"], block["column"])
+        # 正文插图：用户自放图片优先，不足用本地绘制的「要点提示卡」补齐
+        illust_files = illustrator.build(article, article["body"], outdir, cfg)
+        summary["illustrations"] = len(illust_files)
+        md_text = formatter.build_markdown(
+            article, article["body"], block["column"], illust_files
+        )
         md_path.write_text(md_text, encoding="utf-8")
 
         # 先落一条文章记录，后续草稿记录可以关联它
@@ -168,10 +173,16 @@ def run(
         summary["article_id"] = article_id
 
         is_original = article["generated_by"] == "llm"
-        # 本地预览版：头图用同目录相对路径
+        show_cap = bool(cfg.get("illustrations", {}).get("caption", True))
+        # 本地预览版：头图与插图都用同目录相对路径
+        inline_local = [
+            {"name": x["name"], "caption": x["caption"], "show_caption": show_cap}
+            for x in illust_files
+        ]
         preview_inner = formatter.render_wechat_html(
             article, article["body"], block["column"], block["color"],
             head_image_url="cover.png", is_original=is_original,
+            inline_images=inline_local or None,
         )
         preview_path.write_text(formatter.wrap_preview(preview_inner, article["title"]), encoding="utf-8")
         summary["files"] = str(outdir)
@@ -180,36 +191,57 @@ def run(
         wx = WeChatClient(cfg, dry_run=dry_run)
         status = "local_only"
         draft_note = ""
-        content_html = formatter.render_wechat_html(
-            article, article["body"], block["column"], block["color"],
-            head_image_url="", is_original=is_original,
-        )
+
+        def _local_html() -> str:
+            """本地预览/未配凭据时用相对路径引用插图（不提交给微信）。"""
+            return formatter.render_wechat_html(
+                article, article["body"], block["column"], block["color"],
+                head_image_url="", is_original=is_original,
+                inline_images=inline_local or None,
+            )
 
         if dry_run:
             draft_note = "dry-run：未调用微信接口，成品已生成在本地"
-            html_path.write_text(content_html, encoding="utf-8")
+            html_path.write_text(_local_html(), encoding="utf-8")
             log("pipeline").info("dry-run 模式，跳过微信接口")
 
         elif not wx.configured or not cfg["wechat"].get("draft_enabled", True):
             draft_note = "未配置公众号凭据或已关闭草稿功能，仅产出本地成品"
-            html_path.write_text(content_html, encoding="utf-8")
+            html_path.write_text(_local_html(), encoding="utf-8")
             log("pipeline").warning(draft_note)
 
         else:
-            thumb_id = ""
-            head_url = ""
             try:
                 thumb_id = wx.upload_cover(cover_path)
             except Exception as e:  # noqa: BLE001
                 raise RuntimeError(f"封面上传失败（草稿必须要有封面）：{e}") from e
+
             try:
                 head_url = wx.upload_content_image(cover_path)
-                content_html = formatter.render_wechat_html(
-                    article, article["body"], block["column"], block["color"],
-                    head_image_url=head_url, is_original=is_original,
-                )
             except Exception as e:  # noqa: BLE001
+                head_url = ""
                 log("pipeline").warning("正文头图上传失败，改用无头图版本：%s", str(e)[:120])
+
+            # 正文插图必须换成微信域名 URL，外链会被微信编辑器过滤
+            inline_remote: list[dict] = []
+            for x in illust_files:
+                try:
+                    url = wx.upload_content_image(x["path"])
+                    inline_remote.append({
+                        "url": url, "caption": x["caption"],
+                        "show_caption": show_cap,
+                    })
+                except Exception as e:  # noqa: BLE001
+                    log("pipeline").warning(
+                        "插图 %s 上传失败，已跳过该张：%s", x["name"], str(e)[:120]
+                    )
+            summary["illustrations_uploaded"] = len(inline_remote)
+
+            content_html = formatter.render_wechat_html(
+                article, article["body"], block["column"], block["color"],
+                head_image_url=head_url, is_original=is_original,
+                inline_images=inline_remote or None,
+            )
             html_path.write_text(content_html, encoding="utf-8")
 
             media_id = wx.add_draft(article, content_html, thumb_id)

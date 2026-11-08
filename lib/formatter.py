@@ -128,6 +128,46 @@ def _render_blocks(md: str) -> str:
     return "\n".join(out)
 
 
+def _image_section(item: dict) -> str:
+    """单张正文插图；样式全部内联，微信编辑器会过滤 class/style 标签。"""
+    url = html.escape(str(item.get("url") or item.get("name") or ""), quote=True)
+    cap = str(item.get("caption") or "")
+    cap_html = ""
+    if cap and item.get("show_caption", True):
+        cap_html = (
+            f'<p style="font-size:13px;line-height:1.7;color:{MUTED};'
+            f'text-align:center;margin:10px 0 0;font-family:{FONT};">'
+            f'{html.escape(cap)}</p>'
+        )
+    return (
+        f'<section style="margin:30px 0;text-align:center;">'
+        f'<img src="{url}" style="width:100%;max-width:100%;height:auto;'
+        f'border-radius:8px;display:block;" '
+        f'alt="{html.escape(cap or "家事安康会 配图", quote=True)}"/>'
+        f'{cap_html}</section>'
+    )
+
+
+def _inject_images(body_html: str, images: list[dict] | None) -> str:
+    """把插图均匀插入正文块之间（避开开头，那里已有头图）。"""
+    if not images:
+        return body_html
+    lines = body_html.split("\n")
+    total = len(lines)
+    n = len(images)
+    spots: list[int] = []
+    prev = 0
+    for k in range(n):
+        pos = round(total * (k + 1) / (n + 1))
+        pos = max(prev + 1, min(pos, total))
+        spots.append(pos)
+        prev = pos
+    # 从后往前插，避免索引位移
+    for idx in range(n - 1, -1, -1):
+        lines.insert(spots[idx], _image_section(images[idx]))
+    return "\n".join(lines)
+
+
 def render_wechat_html(
     article: dict,
     body_md: str,
@@ -135,8 +175,13 @@ def render_wechat_html(
     color: str,
     head_image_url: str = "",
     is_original: bool = False,
+    inline_images: list[dict] | None = None,
 ) -> str:
-    """生成可直接提交给 draft/add 的正文 HTML。"""
+    """生成可直接提交给 draft/add 的正文 HTML。
+
+    inline_images: [{url 或 name, caption, show_caption}]；正式模式 URL 必须是
+    经 media/uploadimg 换来的微信域名地址，本地预览则传相对文件名。
+    """
     _now = datetime.now()
     date_cn = f"{_now.year}年{_now.month}月{_now.day}日"  # 不用 %-m，兼容 Windows
     primary = color or PRIMARY
@@ -159,7 +204,7 @@ def render_wechat_html(
             f'</section>'
         )
 
-    body_html = _render_blocks(body_md)
+    body_html = _inject_images(_render_blocks(body_md), inline_images)
 
     footer = f"""
 <section style="margin:36px 0 0 0;padding:22px 18px;background:{PAPER};border-radius:8px;text-align:center;">
@@ -209,10 +254,18 @@ def wrap_preview(inner_html: str, title: str) -> str:
 </body></html>"""
 
 
-def build_markdown(article: dict, body_md: str, column: str) -> str:
+def build_markdown(
+    article: dict, body_md: str, column: str,
+    illustrations: list[dict] | None = None,
+) -> str:
     """生成可备份/人工修改的 Markdown 版本。"""
     hints = article.get("image_hints") or []
     hint_md = "\n".join(f"- {h}" for h in hints)
+    ill = illustrations or []
+    ill_md = ("\n".join(
+        f"- {x['name']}（{'用户自放' if x.get('source') == 'user' else '本地绘制'}）：{x.get('caption', '')}"
+        for x in ill
+    ) or "- 未启用")
     refs = article.get("fresh_refs") or []
     ref_md = ("\n".join(f"- {r}（仅作选题灵感，正文未采用其措辞）" for r in refs)
               or "- 今日无可用网络线索，使用内置常青选题")
@@ -227,6 +280,7 @@ def build_markdown(article: dict, body_md: str, column: str) -> str:
         f"---\n\n"
         f"## 今日参考线索（不进入正文）\n\n{ref_md}\n\n"
         f"## 配图建议（不进入正文）\n\n{hint_md}\n\n"
+        f"## 本篇正文插图\n\n{ill_md}\n\n"
         f"## 合规检查记录\n\n{issue_md}\n\n"
         f"## 生成信息\n\n"
         f"- 生成方式：{article.get('generated_by','')}\n"

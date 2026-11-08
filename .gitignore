@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 output/
 .DS_Store
+
+# 用户自放的正文配图（可能是私人照片，不进仓库）
+input/images/*
+!input/images/.gitkeep

@@ -70,6 +70,12 @@ DEFAULTS: dict[str, Any] = {
         "digest_max_len": 110,
     },
     "wechat_credentials": {"appid": "", "appsecret": ""},
+    "illustrations": {
+        "enabled": True,
+        "count": 2,
+        "user_dir": "input/images",
+        "caption": True,
+    },
     "cover": {
         "width": 900,
         "height": 383,

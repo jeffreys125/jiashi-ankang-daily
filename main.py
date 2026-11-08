@@ -152,6 +152,8 @@ def cmd_run(cfg, args):
     print(f"  摘要：{s.get('digest')}")
     print(f"  字数：{s.get('words')}　生成方式：{s.get('generated_by')} / {s.get('model')}")
     print(f"  状态：{s.get('status')}　{s.get('draft_note')}")
+    if s.get("illustrations"):
+        print(f"  正文插图：{s['illustrations']} 张（产出目录 illust-*.png / .jpg）")
     if s.get("need_review"):
         print(f"  ⚠ 合规提示 {len(s.get('compliance_issues', []))} 项，发布前建议扫一眼（见 .md 文件）")
     if s.get("sources"):
