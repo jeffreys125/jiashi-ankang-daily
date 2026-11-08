@@ -16,7 +16,16 @@
     "count": 2,
     "user_dir": "input/images",
     "caption": true,
-    "comment": "正文插图：把自有图片放进 input/images/ 即优先使用；不足的由程序本地绘制要点提示卡补齐。count 可设 0~4，设 0 关闭"
+    "comment": "正文插图：把自有图片放进 input/images/ 即优先使用；其次 AI 生图；最后本地绘制要点卡兜底。count 可设 0~4"
+  },
+  "ai_photo": {
+    "enabled": true,
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "Kwai-Kolors/Kolors",
+    "size": "1024x1024",
+    "timeout": 120,
+    "disclosure": true,
+    "comment": "OpenAI 兼容 /v1/images/generations。Key 放 .env 的 IMAGE_API_KEY；换厂商改 IMAGE_BASE_URL / IMAGE_MODEL，以平台控制台实际模型名为准。disclosure 控制文末「AI 生成」显式声明，法规要求请勿关闭"
   },
   "topics": {
     "avoid_repeat_days": 30,

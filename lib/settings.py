@@ -23,6 +23,10 @@ ENV_OVERRIDES = {
     "JAZK_LLM_BASE_URL": ("llm", "base_url"),
     "JAZK_LLM_MODEL": ("llm", "model"),
     "JAZK_NOTIFY_WEBHOOK": ("notify", "webhook"),
+    "JAZK_IMAGE_API_KEY": ("image_credentials", "api_key"),
+    "JAZK_IMAGE_BASE_URL": ("ai_photo", "base_url"),
+    "JAZK_IMAGE_MODEL": ("ai_photo", "model"),
+    "JAZK_IMAGE_SIZE": ("ai_photo", "size"),
 }
 
 DEFAULTS: dict[str, Any] = {
@@ -76,6 +80,15 @@ DEFAULTS: dict[str, Any] = {
         "user_dir": "input/images",
         "caption": True,
     },
+    "ai_photo": {
+        "enabled": True,
+        "base_url": "https://api.siliconflow.cn/v1",
+        "model": "Kwai-Kolors/Kolors",
+        "size": "1024x1024",
+        "timeout": 120,
+        "disclosure": True,
+    },
+    "image_credentials": {"api_key": ""},
     "cover": {
         "width": 900,
         "height": 383,
@@ -141,6 +154,10 @@ def load_settings() -> dict[str, Any]:
         "LLM_BASE_URL": ("llm", "base_url"),
         "LLM_MODEL": ("llm", "model"),
         "NOTIFY_WEBHOOK": ("notify", "webhook"),
+        "IMAGE_API_KEY": ("image_credentials", "api_key"),
+        "IMAGE_BASE_URL": ("ai_photo", "base_url"),
+        "IMAGE_MODEL": ("ai_photo", "model"),
+        "IMAGE_SIZE": ("ai_photo", "size"),
     }
     for key, (sec, field) in mapping.items():
         val = env.get(key) or env.get(key.lower()) or os.environ.get(key)
@@ -178,4 +195,8 @@ def check_credentials(cfg: dict) -> dict[str, bool]:
             and cfg["wechat_credentials"].get("appid")
         ),
         "消息通知": bool(cfg["notify"].get("webhook")),
+        "ai_生图": bool(
+            cfg.get("ai_photo", {}).get("enabled", True)
+            and cfg.get("image_credentials", {}).get("api_key")
+        ),
     }

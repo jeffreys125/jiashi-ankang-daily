@@ -17,6 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from .aiphoto import AIPhotoGenerator
 from .cover import _wrap, find_font
 from .util import ROOT, log
 
@@ -149,10 +150,15 @@ def _normalize_user_image(src: Path, dst: Path) -> bool:
         return False
 
 
-def build(article: dict, body_md: str, outdir: Path, cfg: dict) -> list[dict]:
+def build(
+    article: dict, body_md: str, outdir: Path, cfg: dict, topic: str = ""
+) -> list[dict]:
     """产出插图文件，返回 [{path, name, caption, source}]，最多 4 张。
 
-    source = "user"（input/images 里你自己的图）或 "drawn"（本地绘制提示卡）。
+    通道优先级：
+      user   = input/images/ 里你自己的照片
+      ai     = AI 生图（需 IMAGE_API_KEY，失败自动跳过）
+      drawn  = 本地绘制的要点提示卡（永远可用的兜底）
     图片文件名固定为 illust-1 / illust-2 ...，方便本地预览用相对路径引用。
     """
     c = cfg.get("illustrations", {})
@@ -183,7 +189,22 @@ def build(article: dict, body_md: str, outdir: Path, cfg: dict) -> list[dict]:
                     "caption": cap, "source": "user",
                 })
 
-    # 通道 B：不足的用本地绘制提示卡补齐
+    # 通道 B：AI 生图（未配 Key / 调用失败 / 额度用尽都会自动跳过）
+    aicfg = cfg.get("ai_photo", {})
+    if aicfg.get("enabled") and len(results) < count:
+        gen = AIPhotoGenerator(cfg)
+        if gen.available:
+            for i in range(len(results), count):
+                item = gen.generate(topic, article.get("title", ""),
+                                    outdir / f"illust-{i + 1}")
+                if item:
+                    results.append(item)
+        else:
+            log("illustrator").info(
+                "未配置 IMAGE_API_KEY，AI 生图跳过，使用本地绘制卡"
+            )
+
+    # 通道 C：仍不足的用本地绘制提示卡补齐
     for i in range(len(results), count):
         dst = outdir / f"illust-{i + 1}.png"
         if _draw_card(phrases[i % len(phrases)], LABELS[i % len(LABELS)], dst):

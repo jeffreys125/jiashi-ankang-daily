@@ -26,6 +26,8 @@ NAMES = {
 
 def main() -> None:
     cfg = load_settings()
+    # 示例固定用本地绘制卡，避免重新生成时消耗生图额度
+    cfg.setdefault("ai_photo", {})["enabled"] = False
     cards = []
     for topic, slug in [("family_story", "family_story"),
                         ("inlaw_relation", "inlaw_relation"),
@@ -84,6 +86,9 @@ def main() -> None:
  .note{{max-width:1080px;margin:30px auto 0;background:#fff;border-left:4px solid #C0603C;
        border-radius:6px;padding:18px 22px;font-size:13px;line-height:1.9;color:#6B6157}}
  .note b{{color:#C0603C}}
+ .ai-link{{display:block;max-width:1080px;margin:26px auto 0;background:#fff;
+          border:1px dashed #C0603C;border-radius:8px;padding:14px 20px;text-align:center;
+          text-decoration:none;color:#C0603C;font-size:14px}}
  code{{background:#F3EDE4;padding:2px 6px;border-radius:3px;font-size:12px}}
 </style></head><body><div class="wrap">
  <div class="head">
@@ -93,12 +98,15 @@ def main() -> None:
  </div>
  <div class="grid">{card_html}
  </div>
+ <a class="ai-link" href="ai-demo/index.html">查看 AI 生图配图效果示例 →</a>
  <div class="note">
    <b>关于示例内容：</b>这三篇由「本地模板生成器」产出，仅用于演示排版与全链路跑通效果，
    字数较短。在 <code>.env</code> 里配置 <code>LLM_API_KEY</code> 后，程序会自动切换为大模型原创稿
    （1200~1800 字），并按当日选题与季节提示写作。<br>
    <b>关于发布：</b>个人主体订阅号自 2025 年 7 月起已无官方发布接口权限，程序默认把文章
-   <b>自动存入公众号草稿箱</b>并推送提醒，最后一步在后台点「发表」即可。
+   <b>自动存入公众号草稿箱</b>并推送提醒，最后一步在后台点「发表」即可。<br>
+   <b>关于配图：</b>这三篇的正文插图是本地绘制的「要点提示卡」（免费、零依赖）。
+   配好 <code>IMAGE_API_KEY</code> 后会自动换成 AI 生成的实景画面，效果见上方链接。
  </div>
 </div></body></html>"""
     (SAMPLE_DIR / "index.html").write_text(index, encoding="utf-8")

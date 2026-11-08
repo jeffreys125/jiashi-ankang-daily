@@ -156,8 +156,16 @@ def run(
             cfg["account"].get("signature", ""), cfg,
         )
         # 正文插图：用户自放图片优先，不足用本地绘制的「要点提示卡」补齐
-        illust_files = illustrator.build(article, article["body"], outdir, cfg)
+        illust_files = illustrator.build(article, article["body"], outdir, cfg, topic)
         summary["illustrations"] = len(illust_files)
+        summary["ai_illustrations"] = sum(
+            1 for x in illust_files if x["source"] == "ai"
+        )
+        # 用了 AI 图就在正文末尾加显式声明（法规 + 微信平台要求）
+        disclose = (
+            any(x["source"] == "ai" for x in illust_files)
+            and bool(cfg.get("ai_photo", {}).get("disclosure", True))
+        )
         md_text = formatter.build_markdown(
             article, article["body"], block["column"], illust_files
         )
@@ -182,7 +190,7 @@ def run(
         preview_inner = formatter.render_wechat_html(
             article, article["body"], block["column"], block["color"],
             head_image_url="cover.png", is_original=is_original,
-            inline_images=inline_local or None,
+            inline_images=inline_local or None, ai_disclosure=disclose,
         )
         preview_path.write_text(formatter.wrap_preview(preview_inner, article["title"]), encoding="utf-8")
         summary["files"] = str(outdir)
@@ -197,7 +205,7 @@ def run(
             return formatter.render_wechat_html(
                 article, article["body"], block["column"], block["color"],
                 head_image_url="", is_original=is_original,
-                inline_images=inline_local or None,
+                inline_images=inline_local or None, ai_disclosure=disclose,
             )
 
         if dry_run:
@@ -240,7 +248,7 @@ def run(
             content_html = formatter.render_wechat_html(
                 article, article["body"], block["column"], block["color"],
                 head_image_url=head_url, is_original=is_original,
-                inline_images=inline_remote or None,
+                inline_images=inline_remote or None, ai_disclosure=disclose,
             )
             html_path.write_text(content_html, encoding="utf-8")
 

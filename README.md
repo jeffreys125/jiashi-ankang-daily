@@ -116,6 +116,8 @@ NOTIFY_WEBHOOK=            # 可选
 
 **不填 `LLM_API_KEY` 也能跑**：程序自动降级到本地模板生成器，产出结构完整的演示稿（`sample/` 里就是），用来验证链路和排版。正式发文前请配上 Key，让内容变成真正的原创稿。
 
+> 别和 `IMAGE_API_KEY` 弄混：`LLM_API_KEY` 是**写文章**用的，`IMAGE_API_KEY` 是**画配图**用的，两者相互独立，可以只配其中一个。详见「七·二、正文配图」。
+
 ### 大模型 API Key 到底填在哪
 
 **就一个地方：项目根目录 `.env` 文件的 `LLM_API_KEY=` 这一行。**
@@ -180,14 +182,48 @@ output/2026-11-08/
 
 每篇默认在正文里插 **2 张图**（`config.json` → `illustrations.count`，可设 0~4）。微信正文的 `<img>` 必须是微信域名地址，程序会用 `media/uploadimg` 逐张上传换取 URL 再写入草稿；单张失败只跳过该张，不影响建草稿。
 
-图片来源两条通道，按优先级：
+**三条通道，按优先级自动降级**：
 
-| 通道 | 做法 | 说明 |
+| 通道 | 触发条件 | 说明 |
 | --- | --- | --- |
-| ① 你自己的图（优先） | 把 jpg / png / webp 放进 `input/images/`，按文件名排序取前 N 张 | 自动居中裁切成 900×500 并压到 1MB 以下；该目录已被 `.gitignore` 排除，私人照片不会进仓库 |
-| ② 本地绘制提示卡（兜底） | 图片不够时程序用 Pillow 画暖色「要点提示卡」 | 卡片文字取自本文的小标题 / 金句，与内容相关；大字、留白多，适合中老年读者；零版权风险、零额外费用 |
+| ① 你自己的照片 | `input/images/` 里有 jpg / png / webp | 最高优先级，自动裁成 900×500 并压到 1MB 以下；该目录已被 `.gitignore` 排除 |
+| ② **AI 生图** | 配了 `IMAGE_API_KEY` | 按栏目生成贴合本文的实景画面，按张计费，详见下方 |
+| ③ 本地绘制要点卡 | 前两条没图 / 调用失败 / 额度用尽 | 文字取自本文小标题与金句，大字适老，免费零依赖，**永远兜底**，绝不阻断出稿 |
 
-刻意**不抓网络图片、不调用 AI 生图**：公众号搬运配图有侵权风险，生图还需额外 API Key 和费用。想要真实照片，最稳妥的做法是自己拍几张家常场景放进 `input/images/`。关掉配图：`illustrations.enabled` 设 `false`，或 `count` 设 `0`。
+### AI 生图怎么配
+
+在 `.env` 里填（**Key 是唯一必填项**，其余已有默认值）：
+
+```dotenv
+IMAGE_API_KEY=你的Key
+IMAGE_BASE_URL=https://api.siliconflow.cn/v1
+IMAGE_MODEL=Kwai-Kolors/Kolors
+IMAGE_SIZE=1024x1024
+```
+
+程序走通用的 **OpenAI 兼容 `/v1/images/generations`**，换厂商只改后两行：
+
+| 厂商 | `IMAGE_BASE_URL` | `IMAGE_MODEL`（以控制台为准） | 约价 |
+| --- | --- | --- | --- |
+| 硅基流动（默认，实测国内可达） | `https://api.siliconflow.cn/v1` | `Kwai-Kolors/Kolors` 等 | ¥0.10/张 |
+| 阿里百炼（新用户有免费额度） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `wan2.7-image` | ¥0.20/张 |
+| 腾讯混元 | 按腾讯云控制台 | 混元生图模型 | ¥0.25/张 |
+
+> 模型名更新较快，**以平台控制台「图像生成」列表为准**；填错会返回 404 并自动回退到本地绘制卡。OpenAI 官方端点在国内通常不通，不建议用。
+> 成本：每天 2 张约 **¥0.2~0.4**（一个月约 ¥6~12）。不配 Key 则完全免费，用绘制卡。
+> 关掉 AI 生图：`config.json` 里 `ai_photo.enabled` 设 `false`，或删掉 `IMAGE_API_KEY`；关掉全部配图：`illustrations.count` 设 `0`。
+
+Prompt 按栏目固定场景（中国家庭饭桌 / 客厅茶几 / 清晨公园长辈背影），并强制「不要任何文字、不要西方面孔、不要医院药片」——AI 生成中文极易出错字，所以带字的要点卡仍由程序本地绘制。`sample/ai-demo/` 是两张实际生成的效果示例，以及插进文章后的排版预览。
+
+### AI 标识合规（别跳过）
+
+《人工智能生成合成内容标识办法》**2025-09-01 施行**，微信明确要求发布 AI 生成内容时**主动声明**。程序已做三件事：
+
+1. 生成的图片**不重新编码**，保留服务商写入文件元数据的隐式标识，也绝不删除、篡改平台自动加的水印；
+2. 图注写「AI 生成 · 氛围示意」，正文末尾加「本文部分配图由 AI 生成」显式声明（受 `ai_photo.disclosure` 控制，**请勿关闭**）；
+3. `.md` 里记录每张图的完整生成提示词，便于留证。
+
+**发表时你还需要在公众号后台主动勾选 AI 内容声明。** 另注：AI 图常超过微信 1MB 限制，上传前会自动转 JPEG 压缩（这一步会重编码）；如需保留隐式标识元数据，可调小 `IMAGE_SIZE` 或选返回体积较小的模型。
 
 ---
 
@@ -220,7 +256,7 @@ bash deploy/install.sh --cron
 
 ```bash
 cd jiashi-ankang-daily
-cp .env.example .env && vi .env      # 填 WX_APPID / WX_APPSECRET / LLM_API_KEY
+cp .env.example .env && vi .env      # 填 WX_APPID / WX_APPSECRET / LLM_API_KEY（可选 IMAGE_API_KEY）
 docker compose up -d --build         # 构建 + 后台常驻定时
 docker compose logs -f               # 看日志
 ```
@@ -285,6 +321,8 @@ docker compose logs -f               # 看日志
 | 填了凭据仍提示「今天已成功跑过一次」 | 幂等保护。加 `--force` 重跑；升级到最新版后 `dry-run` 已不再占用当天的正式名额 |
 | 正文里没有配图 | 检查 `illustrations.enabled` / `count`；或日志里「插图上传失败」——单张失败只跳过该张，草稿仍会创建 |
 | 想用自己的配图 | 放进 `input/images/` 即优先使用（不进 git 仓库） |
+| 配图仍是文字卡片，不是 AI 实景 | 未配 `IMAGE_API_KEY` 或生图失败。看 `jazk.aiphoto` 日志：`401` Key 无效、`404` 模型名/端点错、`429` 额度超限；均会回退绘制卡 |
+| 想关掉 AI 生图 | `config.json` 的 `ai_photo.enabled` 设 `false`，或删掉 `.env` 里的 `IMAGE_API_KEY` |
 | `40013 invalid appid` | `WX_APPID` 填错 |
 | `40001` / `40125` | AppSecret 错误或已重置，重新生成并更新 `.env` |
 | `40164` | 服务器公网 IP 未加入 API IP 白名单，`curl ifconfig.me` 查后添加 |
@@ -317,7 +355,11 @@ docker compose logs -f               # 看日志
 
 **容器在跑，它什么时候自动采集、会自动进草稿箱吗？** 默认**每天北京时间 06:30**（`config.json` 的 `schedule.cron`），`daemon` 启动后等到下一个 06:30 才执行，不会立刻跑。它执行的是**正式流程**（不是 dry-run），所以凭据配好、IP 在白名单里就会自动存进草稿箱；凭据没配则只出本地成品。想改时间改 `schedule.cron`，想立刻出一篇用 `main.py run --force`。
 
-**能换成我自己拍的照片吗？** 可以，直接把图片放进 `input/images/` 就会优先使用，程序自动裁切压缩并上传成微信图片；不放则默认用本地绘制的要点提示卡。见「七·二、正文配图」。
+**能换成我自己拍的照片吗？** 可以，直接把图片放进 `input/images/` 就会优先使用，程序自动裁切压缩并上传成微信图片。见「七·二、正文配图」。
+
+**AI 生图一定要花钱吗？** 不用。不填 `IMAGE_API_KEY` 时程序完全免费地用本地绘制要点卡；填了才按张计费（约 ¥0.10~0.20/张）。生成失败、额度用尽、接口不通都会自动回退，不会因此出不了稿。想省钱就删掉 Key 或把 `ai_photo.enabled` 设 `false`。
+
+**AI 配图会有版权或违规风险吗？** AI 生成图不涉及搬运他人作品，主要义务是**标识**：法规和微信都要求发布时主动声明 AI 生成内容。程序已自动加图注、文末声明并保留服务商的隐式标识，你在后台发表时再勾选一次 AI 声明即可，不要删除图片上的「AI生成」水印。
 
 **能完全无人值守吗？** 个人订阅号不行，微信不开放发布接口；认证服务号/订阅号可以（开 `auto_publish`）。
 
@@ -364,7 +406,8 @@ jiashi-ankang-daily/
 │   ├── compliance.py        # 合规检查与声明
 │   ├── formatter.py         # 公众号内联样式 HTML
 │   ├── cover.py             # Pillow 封面绘制
-│   ├── illustrator.py       # 正文插图（自有图 + 本地绘制要点卡）
+│   ├── illustrator.py       # 插图编排（自有图 → AI 生图 → 绘制卡）
+│   ├── aiphoto.py           # AI 生图（OpenAI 兼容 /v1/images/generations）
 │   ├── wechat.py            # 微信官方 API（token/上传/草稿/发布）
 │   ├── notify.py            # 手机推送提醒
 │   ├── store.py             # SQLite 存储 + 去重 + 幂等
@@ -377,9 +420,11 @@ jiashi-ankang-daily/
 ├── deploy/install.sh        # 裸机一键部署
 ├── deploy/crontab.example   # 裸机定时任务示例
 ├── deploy/docker-entrypoint.sh  # 容器降权与目录属主修正
-├── tools/make_samples.py    # 重新生成示例
+├── tools/make_samples.py    # 重新生成三栏目示例
+├── tools/make_ai_demo.py    # 生成 AI 配图效果示例页
 ├── input/materials.txt      # 手动素材（可选）
-├── sample/                  # 三个栏目的成品示例
+├── input/images/            # 你自放的配图（不进 git）
+├── sample/                  # 三栏目成品示例 + ai-demo/ AI 配图效果
 ├── output/                  # 每日成品
 └── data/                    # SQLite、token 缓存、日志
 ```

@@ -176,6 +176,7 @@ def render_wechat_html(
     head_image_url: str = "",
     is_original: bool = False,
     inline_images: list[dict] | None = None,
+    ai_disclosure: bool = False,
 ) -> str:
     """生成可直接提交给 draft/add 的正文 HTML。
 
@@ -218,10 +219,22 @@ def render_wechat_html(
   </p>
 </section>"""
 
+    # AI 生成内容显式标识（《人工智能生成合成内容标识办法》+ 微信平台要求）
+    ai_note = ""
+    if ai_disclosure:
+        ai_note = (
+            f'<section style="margin:22px 0 0;padding:14px 16px;background:{PAPER};'
+            f'border-radius:6px;">'
+            f'<p style="font-size:12px;line-height:1.8;color:{MUTED};margin:0;'
+            f'font-family:{FONT};text-align:center;">'
+            f'说明：本文部分配图由 AI 生成，仅作氛围示意，非真实人物与场景。</p></section>'
+        )
+
     return (
         f'<section style="max-width:100%;margin:0 auto;padding:8px 2px;'
         f'background:#FFFFFF;font-family:{FONT};">\n'
-        + head + "\n" + img + "\n" + body_html + "\n" + footer + "\n</section>"
+        + head + "\n" + img + "\n" + body_html + "\n"
+        + ai_note + "\n" + footer + "\n</section>"
     )
 
 
@@ -262,10 +275,15 @@ def build_markdown(
     hints = article.get("image_hints") or []
     hint_md = "\n".join(f"- {h}" for h in hints)
     ill = illustrations or []
-    ill_md = ("\n".join(
-        f"- {x['name']}（{'用户自放' if x.get('source') == 'user' else '本地绘制'}）：{x.get('caption', '')}"
-        for x in ill
-    ) or "- 未启用")
+    src_label = {"user": "用户自放", "ai": "AI 生成", "drawn": "本地绘制"}
+    lines = []
+    for x in ill:
+        lines.append(
+            f"- {x['name']}（{src_label.get(x.get('source'), '其他')}）：{x.get('caption', '')}"
+        )
+        if x.get("source") == "ai" and x.get("prompt"):
+            lines.append(f"  - 生成提示词：{x['prompt']}")
+    ill_md = "\n".join(lines) or "- 未启用"
     refs = article.get("fresh_refs") or []
     ref_md = ("\n".join(f"- {r}（仅作选题灵感，正文未采用其措辞）" for r in refs)
               or "- 今日无可用网络线索，使用内置常青选题")

@@ -100,6 +100,9 @@ def cmd_check(cfg, args):
     print(f"  LLM：{cfg['llm'].get('base_url')} / {cfg['llm'].get('model')}")
     print(f"  API Key：{mask(cfg['llm_credentials'].get('api_key',''))}")
     print(f"  自动发布：{'开启' if cfg['wechat'].get('auto_publish') else '关闭（个人号请保持关闭）'}")
+    ap = cfg.get("ai_photo", {})
+    print(f"  AI 生图：{ap.get('base_url', '')} / {ap.get('model', '')}")
+    print(f"  生图 Key：{mask(cfg.get('image_credentials', {}).get('api_key', ''))}")
 
     print("\n[微信接口连通性]")
     wx = WeChatClient(cfg, dry_run=args.dry_run)
@@ -153,7 +156,8 @@ def cmd_run(cfg, args):
     print(f"  字数：{s.get('words')}　生成方式：{s.get('generated_by')} / {s.get('model')}")
     print(f"  状态：{s.get('status')}　{s.get('draft_note')}")
     if s.get("illustrations"):
-        print(f"  正文插图：{s['illustrations']} 张（产出目录 illust-*.png / .jpg）")
+        extra = f"，其中 AI 生成 {s['ai_illustrations']} 张（已加显式标识）" if s.get("ai_illustrations") else ""
+        print(f"  正文插图：{s['illustrations']} 张（产出目录 illust-*.png / .jpg）{extra}")
     if s.get("need_review"):
         print(f"  ⚠ 合规提示 {len(s.get('compliance_issues', []))} 项，发布前建议扫一眼（见 .md 文件）")
     if s.get("sources"):
