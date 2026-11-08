@@ -1,0 +1,15 @@
+# 绝不把凭据、运行数据、缓存打进镜像
+.git
+.gitignore
+.env
+*.local
+*.db
+*.log
+data/
+output/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+README.md
+sample/

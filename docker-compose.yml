@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    image: jiashi-ankang-daily:latest
+    container_name: jiashi-ankang
+    restart: unless-stopped
+
+    # 凭据统一放在 .env（已被 .gitignore 排除，不会进镜像、也不会推到 GitHub）
+    # 首次使用：cp .env.example .env 后填入 WX_APPID / WX_APPSECRET / LLM_API_KEY
+    env_file:
+      - .env
+
+    environment:
+      TZ: Asia/Shanghai
+
+    volumes:
+      # 数据与成品持久化到宿主机，容器重建不丢
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./input:/app/input
+      # 改选题源 / 关键词 / 定时时间无需重建镜像，改完重启即可
+      - ./config.json:/app/config.json:ro
+
+    # 容器内常驻定时：按 config.json 的 schedule.cron（默认每天 06:30）出稿
+    command: ["python", "main.py", "daemon"]
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

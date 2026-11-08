@@ -1,0 +1,16 @@
+# 家事安康会 · 每日内容助手 定时任务示例
+# 用 crontab -e 粘贴下面内容，或执行 bash deploy/install.sh --cron 自动写入。
+#
+# 说明：
+#   - 程序会把文章自动存入公众号「草稿箱」并推送提醒；
+#     个人订阅号无发布接口权限，最后一步请到后台点「发表」。
+#   - 把 /workspace/jiashi-ankang-daily 换成你服务器上的实际绝对路径。
+#   - 如果服务器系统时区已经是 Asia/Shanghai，可删掉 TZ 那一行。
+#   - 幂等保护：同一天跑成功后再跑会自动跳过，重复触发不会产生多篇草稿。
+
+TZ=Asia/Shanghai
+30 6 * * * cd /workspace/jiashi-ankang-daily && /workspace/jiashi-ankang-daily/.venv/bin/python /workspace/jiashi-ankang-daily/main.py run >> /workspace/jiashi-ankang-daily/data/cron.log 2>&1
+
+# 如果不想装 cron，也可以让程序自己常驻定时：
+#   nohup /workspace/jiashi-ankang-daily/.venv/bin/python main.py daemon > data/daemon.log 2>&1 &
+# 或用 systemd 托管（设置 WorkingDirectory 与 ExecStart 指向上面的 python 与 main.py）。

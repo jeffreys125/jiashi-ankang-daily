@@ -1,0 +1,154 @@
+{
+  "account": {
+    "name": "家事安康会",
+    "author": "家事安康会",
+    "intro": "分享家长里短家庭故事，聊聊婆媳相处之道，中老年养生健康知识，守护家人平安喜乐",
+    "signature": "愿每一个家，都平安喜乐",
+    "audience": "中老年朋友和关心家庭生活的读者"
+  },
+  "schedule": {
+    "cron": "30 6 * * *",
+    "timezone": "Asia/Shanghai",
+    "comment": "每天 06:30 采集写稿建草稿；你在公众号后台点一下「发表」即可"
+  },
+  "topics": {
+    "avoid_repeat_days": 30,
+    "weights": {
+      "family_story": 3,
+      "inlaw_relation": 3,
+      "senior_health": 4
+    },
+    "comment": "权重越大越容易被抽中；养生类略高，符合账号简介"
+  },
+  "collector": {
+    "timeout": 12,
+    "max_items_per_source": 10,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "manual_file": "input/materials.txt",
+    "fallback_to_builtin": true,
+    "sources": [
+      {
+        "type": "portal",
+        "name": "人民网·健康",
+        "url": "http://health.people.com.cn/",
+        "topic": "senior_health",
+        "enabled": true,
+        "note": "实测稳定，标题最贴合中老年养生"
+      },
+      {
+        "type": "portal",
+        "name": "中新网·健康",
+        "url": "https://www.chinanews.com.cn/health/",
+        "topic": "senior_health",
+        "enabled": true
+      },
+      {
+        "type": "portal",
+        "name": "生命时报",
+        "url": "http://www.lifetimes.cn/",
+        "topic": "senior_health",
+        "enabled": true
+      },
+      {
+        "type": "portal",
+        "name": "新华网·健康",
+        "url": "http://www.news.cn/health/",
+        "topic": "senior_health",
+        "enabled": true
+      },
+      {
+        "type": "portal",
+        "name": "中国妇女网",
+        "url": "http://www.cnwomen.com.cn/",
+        "topic": "family_story",
+        "enabled": true,
+        "note": "家庭题材参考源，时政稿由 exclude 过滤"
+      },
+      {
+        "type": "portal",
+        "name": "国家卫健委",
+        "url": "https://www.nhc.gov.cn/",
+        "topic": "senior_health",
+        "enabled": false,
+        "note": "实测返回 412 反爬，默认关闭；如自有网络可开启"
+      }
+    ],
+    "custom_rss": [
+      {
+        "name": "自定义RSS示例",
+        "url": "",
+        "topic": "family_story",
+        "enabled": false,
+        "note": "填入你信任的公开 RSS 地址后把 enabled 改为 true"
+      }
+    ],
+    "filters": {
+      "min_len": 8,
+      "max_len": 46,
+      "comment": "exclude 同时挡时政/广告稿和标题党；cross_topic_exclude 防止家庭栏目混进医疗稿",
+      "exclude": [
+        "习近平", "两会", "进博", "总书记", "政治局", "常委", "外交部", "复信",
+        "招标", "中标", "采购", "公示", "公告", "通知", "下载", "APP", "VPN",
+        "试卷", "真题", "题库", "招聘", "股价", "融资", "上市", "签约", "版权所有",
+        "网站声明", "联系我们", "登录", "注册", "专题", "直播", "高质量发展",
+        "健康中国", "中国式现代化", "接续奋斗", "普惠", "数智", "赋能", "战略",
+        "部署", "之首", "开局", "新征程", "现代化", "峰会", "论坛", "大会",
+        "榜单", "训练营", "六大能力", "启动", "签约仪式",
+        "举报", "曝光", "震惊", "竟然", "竟", "意想不到", "紧急提醒", "千万别",
+        "别怪", "速看", "速转", "扎心", "泪目", "悲剧", "出事", "猝死", "抢救",
+        "后悔", "晚了", "赶紧", "必看", "太可怕", "吓人", "警惕", "小心",
+        "子宫", "肌瘤", "肿瘤", "癌", "切胃", "脑机接口"
+      ],
+      "include_by_topic": {
+        "senior_health": ["老人", "老年", "中老年", "血压", "血糖", "血脂", "养生", "健康", "睡眠", "饮食", "运动", "骨骼", "关节", "心脑血管", "感冒", "咳嗽", "体检", "用药", "跌倒", "营养", "秋冬", "降温", "保暖", "脾胃", "免疫", "牙齿", "听力", "肌肉", "补钙", "肌少症", "医保", "辐射", "秋裤"],
+        "family_story": ["家庭", "家里", "全家", "家风", "家长里短", "父母", "母亲", "父亲", "儿女", "子女", "夫妻", "老伴", "孙辈", "邻里", "团圆", "亲情", "陪伴", "牵挂", "退休", "回忆", "老照片", "过年", "全家福", "手足"],
+        "inlaw_relation": ["婆媳", "婆婆", "儿媳", "相处", "沟通", "边界", "家庭关系", "代际", "家务", "育儿", "孝顺", "体谅", "妯娌"]
+      },
+      "cross_topic_exclude": {
+        "family_story": ["养生", "血压", "血糖", "医生", "专家建议", "药", "疗效", "疾病", "症状", "门诊", "患者", "治疗"],
+        "inlaw_relation": ["养生", "血压", "血糖", "医生", "专家建议", "药", "疗效", "疾病", "症状", "门诊", "患者", "治疗"]
+      }
+    }
+  },
+  "llm": {
+    "base_url": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "temperature": 0.8,
+    "max_tokens": 3000,
+    "timeout": 120,
+    "target_words": [1200, 1800],
+    "comment": "兼容 OpenAI /chat/completions 协议，可换混元、通义、智谱等，见 README"
+  },
+  "wechat": {
+    "draft_enabled": true,
+    "auto_publish": false,
+    "need_open_comment": 1,
+    "only_fans_can_comment": 0,
+    "content_source_url": "",
+    "digest_max_len": 110,
+    "comment": "auto_publish 保持 false：个人订阅号无 freepublish 权限，强开会返回 48001"
+  },
+  "cover": {
+    "width": 900,
+    "height": 383,
+    "font_size": 54,
+    "sub_font_size": 22,
+    "bg_color": [200, 96, 66],
+    "accent_color": [247, 232, 210]
+  },
+  "notify": {
+    "enabled": false,
+    "type": "serverchan",
+    "webhook": "",
+    "timeout": 10,
+    "comment": "填 Server酱/企业微信机器人 webhook，草稿就绪后手机收到提醒"
+  },
+  "compliance": {
+    "strict": true,
+    "max_title_len": 30
+  },
+  "runtime": {
+    "log_level": "INFO",
+    "dry_run_default": false
+  }
+}
